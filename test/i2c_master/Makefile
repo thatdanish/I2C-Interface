@@ -1,0 +1,2 @@
+sample: 
+	echo Hello World
