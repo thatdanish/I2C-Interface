@@ -1,2 +1,4 @@
 sim_build
 .vscode
+__pycache__
+results.xml
