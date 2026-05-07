@@ -5,6 +5,7 @@ from cocotb.clock import Clock
 
 # Parameters
 
+PRINT_STATES = False
 CLOCKPERIOD = 10
 MAX_CLOCKS = 140
 master_sates = ["IDLE","START","ADDR","R_DATA", 
@@ -35,8 +36,8 @@ async def init_inputs(dut):
 
 # Print states
 
-async def print_states(dut, master=True):
-    if master:
+async def print_states(dut):
+    if PRINT_STATES:
         while True:
             await RisingEdge(dut.clk_i)
             cocotb.log.info(f"Master state: {master_sates[int(dut.current_state.value)]}")

@@ -3,14 +3,16 @@
 module i2c_master (
     input clk_i,
     input rst_i,
-    input data_valid_i, 
+    // From/To Slave
     input sda_i,
-    input rw_i,
-    output logic busy_o,
     output logic sda_o,
     output logic scl_o,
+    // External
+    input rw_i,
+    input data_valid_i, 
     input logic [6:0] addr_i,
-    input logic [31:0] data_i
+    input logic [31:0] data_i,
+    output logic busy_o
 );
 
 typedef enum bit[3:0] { IDLE, START, ADDR, R_DATA, W_DATA, RECV_ACK, SEND_ACK, STOP} state_t;
@@ -21,8 +23,7 @@ bit [2:0] addr_counter;
 bit [31:0] send_data;
 bit [31:0] recv_data;
 bit [6:0] addr;
-bit rw;
-bit byte_complete, data_complete;
+bit rw, byte_complete, data_complete;
 
 assign busy_o = ~(current_state == IDLE);
 assign byte_complete = (bit_counter == 'd7);
@@ -125,7 +126,7 @@ always_comb begin
             scl_o = clk_i;
         end
         W_DATA: begin
-            sda_o = send_data[((byte_counter*8)-1)+bit_counter];
+            sda_o = send_data[((byte_counter-1)*8)+bit_counter];
             scl_o = clk_i;            
         end 
         RECV_ACK: begin
