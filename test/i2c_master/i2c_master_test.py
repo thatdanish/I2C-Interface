@@ -3,21 +3,19 @@ import cocotb
 from cocotb.triggers import Timer, RisingEdge, ClockCycles
 from cocotb.clock import Clock
 
-
-
 # Parameters
 
 CLOCKPERIOD = 10
-MAX_CLOCKS = 60
-master_sates = {0:"IDLE", 1:"START", 2:"ADDR", 3:"R_DATA", 
-                4: "W_DATA", 5: "RECV_ACK", 6:"SEND_ACK", 7: "STOP"}
+MAX_CLOCKS = 140
+master_sates = ["IDLE","START","ADDR","R_DATA", 
+                "W_DATA","RECV_ACK","SEND_ACK","STOP"]
 
 # Clock
 
-async def clk_(dut):
+async def clk_(dut, N_CLKS):
     clock = Clock(dut.clk_i, CLOCKPERIOD, "ns")
     clock.start()
-    await ClockCycles(dut.clk_i, MAX_CLOCKS)
+    await ClockCycles(dut.clk_i, int(N_CLKS))
 
 # Reset
 
@@ -47,7 +45,7 @@ async def print_states(dut, master=True):
 
 @cocotb.test()
 async def single_write(dut):
-    clk = cocotb.start_soon(clk_(dut))
+    clk = cocotb.start_soon(clk_(dut, MAX_CLOCKS/2))
     
     await init_inputs(dut)
     await Reset(dut.rst_i, 4)
@@ -62,12 +60,35 @@ async def single_write(dut):
         try: 
             assert (dut.busy_o.value == 1) 
         except: 
-            raise  AssertionError("busy_o is not asserted \n" \
-            f"current_state : {dut.current_state.value}")
+            raise  AssertionError("busy_o is not asserted")
         
         dut.data_valid_i.value = 0
-        
-        # cocotb.start_soon(print_states(dut))
-    
+        cocotb.start_soon(print_states(dut))
         await clk
+    
     else: raise AssertionError("busy_o is not de-asserted")
+
+# Single-read
+
+@cocotb.test()
+async def single_read(dut):
+    clk = cocotb.start_soon(clk_(dut, MAX_CLOCKS/2))
+    await init_inputs(dut)
+    await Timer(CLOCKPERIOD, "ns")
+
+    if (dut.busy_o.value == 0):
+        dut.data_valid_i.value = 1
+        dut.addr_i.value = random.getrandbits(7)
+        dut.rw_i.value = 1
+        await Timer(CLOCKPERIOD, "ns")
+
+        try: 
+            assert (dut.busy_o.value == 1) 
+        except: 
+            raise  AssertionError("busy_o is not asserted")
+
+        dut.data_valid_i.value = 0
+        cocotb.start_soon(print_states(dut))
+        await clk
+    else:
+        raise AssertionError("busy_o is not de-asserted")

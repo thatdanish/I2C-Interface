@@ -42,6 +42,10 @@ always_ff @( posedge clk_i ) begin
             addr <= addr_i;
             rw <= rw_i;
         end
+        if (current_state == IDLE) begin
+            bit_counter <= 'd0;
+            byte_counter <= 'd0;
+        end
         if (current_state == W_DATA || current_state == ADDR || current_state == R_DATA) begin
             bit_counter <= (bit_counter == 'd7) ? 'd0 : bit_counter + 'd1;
             byte_counter <= (byte_complete == 1'b1) ? ((byte_counter == 'd5 ) ? 'd0 : byte_counter + 'd1) : byte_counter;
