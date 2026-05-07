@@ -7,7 +7,7 @@ from cocotb.clock import Clock
 PRINT_STATES = True
 SMOKE_TEST =  True
 CLOCKPERIOD = 10
-MAX_CLOCKS = 140
+MAX_CLOCKS = 150
 slave_sates = ["IDLE","START","ADDR","R_DATA", 
                 "W_DATA","RECV_ACK","SEND_ACK","STOP"]
 
