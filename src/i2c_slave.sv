@@ -31,7 +31,7 @@ always_ff @( posedge clk_i ) begin
         trigger <= 1'b0;
     end else begin
         trigger <= 1'b1;
-        if (sda_i == 1'b0 && scl_i  == 1'b1 && (current_state == ADDR ||  current_state == W_DATA || current_state == RECV_ACK || current_state == STOP) ) trigger <= 1'b1;
+        if (sda_i == 1'b0 && scl_i  == 1'b1 && (current_state == ADDR ||  current_state == W_DATA || current_state == RECV_ACK || current_state == STOP)) trigger <= 1'b1;
         else trigger <= 1'b0;
     end
 

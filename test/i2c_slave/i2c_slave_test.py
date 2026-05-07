@@ -37,7 +37,7 @@ async def print_states(dut):
     if PRINT_STATES:
         while True:
             await RisingEdge(dut.clk_i)
-            cocotb.log.info(f"Master state: {slave_sates[int(dut.current_state.value)]}")
+            cocotb.log.info(f"Slave state: {slave_sates[int(dut.current_state.value)]}")
 
 # Smoke-test
 
@@ -51,3 +51,9 @@ if SMOKE_TEST:
         await init_inputs(dut)
         cocotb.start_soon(print_states(dut))
         await clk
+
+# Single-write
+
+@cocotb.test()
+async def single_write(dut):
+    pass
