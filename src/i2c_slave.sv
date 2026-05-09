@@ -21,25 +21,45 @@ bit [2:0] byte_counter;
 bit [31:0] send_data;
 bit [31:0] recv_data;
 bit [6:0] addr;
-bit trigger, byte_complete, data_complete, rw;
+bit trigger_reset, trigger_start, byte_complete, data_complete, rw;
 
 assign byte_complete = (bit_counter == 'd7);
 assign data_complete = (byte_counter == 'd5);
 
 always_ff @( posedge clk_i ) begin
     if (!rst_i) begin
-        trigger <= 1'b0;
+        trigger_reset <= 1'b0;
+        trigger_start <= 1'b0;
     end else begin
-        trigger <= 1'b1;
-        if (sda_i == 1'b0 && scl_i  == 1'b1 && (current_state == ADDR ||  current_state == W_DATA || current_state == RECV_ACK || current_state == STOP)) trigger <= 1'b1;
-        else trigger <= 1'b0;
+        trigger_reset <= 1'b1;
+        if (next_state == ADDR) trigger_start <= 1'b1;
+        if (current_state == ADDR) trigger_start <= 1'b0;
+        // if (sda_i == 1'b0 && scl_i  == 1'b1 && (current_state == ADDR ||  current_state == W_DATA || current_state == RECV_ACK || current_state == STOP)) trigger_reset <= 1'b1;
+        // else trigger_reset <= 1'b0;
     end
 
 end
 
+
+always_ff @( posedge scl_i or posedge trigger_reset) begin 
+    if (current_state ==  IDLE) begin
+        addr <= 'd0;
+        recv_data <= 'd0;
+        rw <= 1'b0;
+    end
+    if (current_state == ADDR) begin
+        addr[bit_counter] <= sda_i; 
+        if (byte_complete == 1'b1) rw <= sda_i;
+    end
+    if (current_state == W_DATA) begin
+        recv_data[bit_counter] <= sda_i;
+    end
+end
+
 // Slave FSM
 
-always_ff @( posedge scl_i or posedge trigger) begin 
+
+always_ff @( posedge scl_i or posedge trigger_reset) begin 
     if (current_state ==  IDLE) begin
         bit_counter <= 'd0;
         byte_counter <= 'd0;
@@ -50,11 +70,12 @@ always_ff @( posedge scl_i or posedge trigger) begin
     end
 end
 
-always_ff @( posedge scl_i or posedge trigger) begin 
+always_ff @( posedge scl_i or posedge trigger_reset) begin 
     if (!rst_i) begin
         current_state <= IDLE;
     end else begin
-        current_state <= next_state;
+        if (trigger_start == 1'b1) current_state <= ADDR;
+        else current_state <= next_state;
     end
 end
 
@@ -62,7 +83,7 @@ always_comb begin
     next_state = IDLE;
     case (current_state)
         IDLE: begin
-            if (sda_i == 1'b0 && scl_i  == 1'b1 ) next_state = START;
+            if (sda_i == 1'b0 && scl_i  == 1'b1 ) next_state = ADDR;
         end
         START: begin
             next_state = ADDR;
