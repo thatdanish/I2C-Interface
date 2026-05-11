@@ -7,6 +7,8 @@ from cocotb.clock import Clock
 
 PRINT_STATES = True
 SMOKE_TEST =  False
+SINGLE_WRITE = True
+SINGLE_READ  = True
 CLOCKPERIOD = 10
 MAX_CLOCKS = 150
 slave_sates = ["IDLE","ADDR","R_DATA", 
@@ -31,6 +33,8 @@ async def Reset(rst_i, n):
 async def init_inputs(dut):
     dut.scl_i.value = 1
     dut.sda_i.value = 1
+    dut.data_valid_i.value = 0
+    dut.data_i.value = 0
 
 # Print-states
 
@@ -54,70 +58,149 @@ if SMOKE_TEST:
 
 # Single-write
 
-@cocotb.test()
-async def single_write(dut):
+if SINGLE_WRITE:
+    @cocotb.test()
+    async def single_write(dut):
 
-    # Setup
-    clk = cocotb.start_soon(clk_(dut, MAX_CLOCKS/2))
-    await init_inputs(dut)
-    await Reset(dut.rst_i,5)
-    cocotb.start_soon(print_states(dut))
-    await Timer(CLOCKPERIOD,"ns")
+        # Setup
+        clk = cocotb.start_soon(clk_(dut, MAX_CLOCKS/2))
+        await init_inputs(dut)
+        await Reset(dut.rst_i,5)
+        cocotb.start_soon(print_states(dut))
+        await Timer(CLOCKPERIOD,"ns")
 
-    # Start
-    
-    dut.sda_i.value = 0
-    dut.scl_i.value = 1
-    # await Timer(CLOCKPERIOD, "ns")
-    shared_clk = Clock(dut.scl_i, CLOCKPERIOD, "ns")
-    shared_clk.start()
+        # Start
+        dut.sda_i.value = 0
+        dut.scl_i.value = 1
+        # await Timer(CLOCKPERIOD, "ns")
+        shared_clk = Clock(dut.scl_i, CLOCKPERIOD, "ns")
+        shared_clk.start()
 
-    # ADDR
-    
-    addr = []
-    for i in range(8):
-        await RisingEdge(dut.scl_i)
-        if i != 7:
-            a = random.randint(0,1)
-            dut.sda_i.value = a
-            addr.append(a)
-        else: 
-            dut.sda_i.value = 0
-    addr.reverse()
-    await Timer(CLOCKPERIOD, "ns")
-    cocotb.log.info(f"Address : {addr}")
-    
-    # ACK
-    await Timer(CLOCKPERIOD, "ns")
-    await RisingEdge(dut.scl_i)
-    try:
-        assert(dut.sda_o.value == 0)  
-    except: 
-        raise AssertionError("sda_o high after address")
-    
-    # Write Data
-    data = []
-    for i in range(35):
+        # ADDR
+        addr = []
+        for i in range(8):
+            await RisingEdge(dut.scl_i)
+            if i != 7:
+                a = random.randint(0,1)
+                dut.sda_i.value = a
+                addr.append(a)
+            else: 
+                dut.sda_i.value = 0
+        addr.reverse()
         await Timer(CLOCKPERIOD, "ns")
-        if i not in [8, 16, 24]:
-            d = random.randint(0,1)
-            dut.sda_i.value = d
-            data.append(d)
-    
-    data.reverse()
-    cocotb.log.info(f"Data : {data}")
+        cocotb.log.info(f"Address : {addr}")
+        
+        # ACK
+        await Timer(CLOCKPERIOD, "ns")
+        await RisingEdge(dut.scl_i)
+        try:
+            assert(dut.sda_o.value == 0)  
+        except: 
+            raise AssertionError("sda_o high after address")
+        
+        # Write Data
+        data = []
+        for i in range(35):
+            await Timer(CLOCKPERIOD, "ns")
+            if i not in [8, 16, 24]:
+                d = random.randint(0,1)
+                dut.sda_i.value = d
+                data.append(d)
+        
+        # data.reverse()
+        # cocotb.log.info(f"Data : {data}")
 
-    await RisingEdge(dut.scl_i)
-    try:
-        assert(dut.sda_o.value == 1)  
-    except: 
-        raise AssertionError("sda_o low after data")
-    
-    # STOP
-    
-    await RisingEdge(dut.clk_i)
-    dut.sda_i.value = 1
-    shared_clk.stop()
-    dut.scl_i.value = 1
+        await RisingEdge(dut.scl_i)
+        try:
+            assert(dut.sda_o.value == 1)  
+        except: 
+            raise AssertionError("sda_o low after data")
+        
+        # STOP
+        await RisingEdge(dut.scl_i)
+        shared_clk.stop()
+        dut.sda_i.value = 1
+        dut.scl_i.value = 1
 
-    await clk
+        await Timer(CLOCKPERIOD, "ns")
+        await RisingEdge(dut.clk_i)
+        try:
+            assert slave_sates[int(dut.current_state.value)] ==  "IDLE"
+        except:
+            raise Exception("Computation not terminating at IDLE")
+        await clk
+
+# Single-read
+
+if SINGLE_READ:
+    @cocotb.test()
+    async def single_read(dut):
+        
+        # Setup
+        clk = cocotb.start_soon(clk_(dut, MAX_CLOCKS/2))
+        await init_inputs(dut)
+        await Reset(dut.rst_i,5)
+        cocotb.start_soon(print_states(dut))
+        await Timer(CLOCKPERIOD,"ns")
+
+        # Start        
+        dut.sda_i.value = 0
+        dut.scl_i.value = 1
+        # await Timer(CLOCKPERIOD, "ns")
+        shared_clk = Clock(dut.scl_i, CLOCKPERIOD, "ns")
+        shared_clk.start()
+
+        # ADDR
+        addr = []
+        for i in range(8):
+            await RisingEdge(dut.scl_i)
+            if i != 7:
+                a = random.randint(0,1)
+                dut.sda_i.value = a
+                addr.append(a)
+            else: 
+                dut.sda_i.value = 1
+        
+        addr.reverse()
+        await Timer(CLOCKPERIOD, "ns")
+        cocotb.log.info(f"Address : {addr}")
+            
+        # ACK & send data to the receiver
+        send_date = False
+        if (dut.rw_o.value == 1):
+            send_date = True
+
+        await Timer(CLOCKPERIOD, "ns")
+        if send_date:
+            dut.data_valid_i.value = 1
+            dut.data_i.value = random.getrandbits(32)
+
+        await RisingEdge(dut.scl_i)
+        dut.data_valid_i.value = 0
+        try:
+            assert(dut.sda_o.value == 0)  
+        except: 
+            raise AssertionError("sda_o high after address")
+        
+        # Data
+        for i in range(35):
+            await RisingEdge(dut.scl_i)
+            if i in [7, 16, 25]:
+                dut.sda_i.value = 0
+            else: 
+                dut.sda_i.value = 1
+
+        # STOP  
+        await Timer(CLOCKPERIOD, "ns")    
+        await RisingEdge(dut.clk_i)
+        dut.sda_i.value = 1
+        shared_clk.stop()
+        dut.scl_i.value = 1
+        
+        await RisingEdge(dut.clk_i)
+        try:
+            assert slave_sates[int(dut.current_state.value)] ==  "IDLE"
+        except:
+            raise Exception("Computation not terminating at IDLE")
+        
+        await clk
