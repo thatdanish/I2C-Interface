@@ -9,8 +9,8 @@ PRINT_STATES = True
 SMOKE_TEST =  False
 CLOCKPERIOD = 10
 MAX_CLOCKS = 150
-slave_sates = ["IDLE","START","ADDR","R_DATA", 
-                "W_DATA","RECV_ACK","SEND_ACK","STOP"]
+slave_sates = ["IDLE","ADDR","R_DATA", 
+                "W_DATA","RECV_ACK","SEND_ACK"]
 
 # Clock
 
@@ -96,12 +96,17 @@ async def single_write(dut):
         raise AssertionError("sda_o high after address")
     
     # Write Data
-    
-    for i in range(32):
-        await RisingEdge(dut.scl_i)
+    data = []
+    for i in range(35):
+        await Timer(CLOCKPERIOD, "ns")
         if i not in [8, 16, 24]:
-            dut.sda_i.value = random.randint(0,1)
+            d = random.randint(0,1)
+            dut.sda_i.value = d
+            data.append(d)
     
+    data.reverse()
+    cocotb.log.info(f"Data : {data}")
+
     await RisingEdge(dut.scl_i)
     try:
         assert(dut.sda_o.value == 1)  

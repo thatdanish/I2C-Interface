@@ -14,7 +14,7 @@ module i2c_slave(
     output logic [31:0] data_o
 );
 
-typedef enum bit[3:0] { IDLE, START, ADDR, R_DATA, W_DATA, RECV_ACK, SEND_ACK, STOP} state_t;
+typedef enum bit[3:0] { IDLE, ADDR, R_DATA, W_DATA, RECV_ACK, SEND_ACK} state_t;
 state_t current_state, next_state;
 bit [2:0] bit_counter;
 bit [2:0] byte_counter;
@@ -52,7 +52,7 @@ always_ff @( posedge scl_i or posedge trigger_reset) begin
         if (byte_complete == 1'b1) rw <= sda_i;
     end
     if (current_state == W_DATA) begin
-        recv_data[bit_counter] <= sda_i;
+        recv_data[((byte_counter-1)*8)+bit_counter] <= sda_i;
     end
 end
 
@@ -85,9 +85,6 @@ always_comb begin
         IDLE: begin
             if (sda_i == 1'b0 && scl_i  == 1'b1 ) next_state = ADDR;
         end
-        START: begin
-            next_state = ADDR;
-        end
         ADDR: begin
             if (byte_complete == 1'b1) next_state = SEND_ACK;
             else next_state = ADDR;
@@ -103,11 +100,8 @@ always_comb begin
             next_state = IDLE; // temporary
         end
         SEND_ACK: begin
-            if (data_complete == 1'b1) next_state = STOP;
+            if (data_complete == 1'b1) next_state = IDLE;
             else next_state = W_DATA;
-        end
-        STOP: begin
-            next_state = IDLE;
         end
         default: begin
             next_state = IDLE;
@@ -119,13 +113,6 @@ end
 always_comb begin 
     case (current_state)
         IDLE: begin
-            sda_o = 1'b1;
-            rw_o =  1'b0;
-            addr_o = 'd0;
-            data_valid_o = 1'b0;
-            data_o = 'd0;
-        end
-        START: begin
             sda_o = 1'b1;
             rw_o =  1'b0;
             addr_o = 'd0;
@@ -150,8 +137,8 @@ always_comb begin
             sda_o = 1'b1;
             rw_o =  1'b0;
             addr_o = addr;
-            data_valid_o = (data_complete == 1'b1) ? 1'b1 : 1'b0;
-            data_o = (data_complete == 1'b1) ? recv_data : 'd0;
+            data_valid_o = 1'b0;
+            data_o = 'd0;
         end
         RECV_ACK: begin
             sda_o = 1'b0;
@@ -164,15 +151,8 @@ always_comb begin
             sda_o = (data_complete == 1'b1) ? 1'b1 : 1'b0;
             rw_o =  1'b0;
             addr_o = 'd0;
-            data_valid_o = 1'b0;
-            data_o = 'd0;  
-        end
-        STOP: begin
-            sda_o = 1'b1;
-            rw_o =  1'b0;
-            addr_o = 'd0;
-            data_valid_o = 1'b0;
-            data_o = 'd0;  
+            data_valid_o = (data_complete == 1'b1) ? 1'b1 : 1'b0;
+            data_o = (data_complete == 1'b1) ? recv_data : 'd0;
         end
         default: begin
             sda_o = 1'd1;
