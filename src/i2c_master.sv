@@ -15,7 +15,7 @@ module i2c_master (
     output logic busy_o
 );
 
-typedef enum bit[3:0] { IDLE, START, ADDR, R_DATA, W_DATA, RECV_ACK, SEND_ACK, STOP} state_t;
+typedef enum bit[3:0] { IDLE, START, BUFF, ADDR, R_DATA, W_DATA, RECV_ACK, SEND_ACK, STOP} state_t;
 state_t current_state, next_state;
 bit [2:0] bit_counter;
 bit [2:0] byte_counter;
@@ -43,19 +43,22 @@ always_ff @( posedge clk_i ) begin
             addr <= addr_i;
             rw <= rw_i;
         end
-        if (current_state == IDLE) begin
-            bit_counter <= 'd0;
-            byte_counter <= 'd0;
-        end
-        if (current_state == W_DATA || current_state == ADDR || current_state == R_DATA) begin
-            bit_counter <= (bit_counter == 'd7) ? 'd0 : bit_counter + 'd1;
-            byte_counter <= (byte_complete == 1'b1) ? ((byte_counter == 'd5 ) ? 'd0 : byte_counter + 'd1) : byte_counter;
-        end
-        if (current_state == R_DATA) begin
-            recv_data[((byte_counter*8)-1)+bit_counter] <= sda_i;
-        end
-    end  
+    end
 end
+
+always_ff @(posedge scl_o) begin
+    if (current_state == IDLE) begin
+        bit_counter <= 'd0;
+        byte_counter <= 'd0;
+    end
+    if (current_state == W_DATA || current_state == ADDR || current_state == R_DATA) begin
+        bit_counter <= (bit_counter == 'd7) ? 'd0 : bit_counter + 'd1;
+        byte_counter <= (byte_complete == 1'b1) ? ((byte_counter == 'd5 ) ? 'd0 : byte_counter + 'd1) : byte_counter;
+    end
+    if (current_state == R_DATA) begin
+        recv_data[((byte_counter*8)-1)+bit_counter] <= sda_i;
+    end
+end  
 
 // Controller FSM
 
@@ -74,6 +77,9 @@ always_comb begin
             if (data_valid_i == 1'b1) next_state = START;
         end 
         START: begin
+            next_state =  BUFF;
+        end 
+        BUFF: begin
             next_state =  ADDR;
         end 
         ADDR: begin
@@ -92,8 +98,11 @@ always_comb begin
             if (sda_i == 1'b0) begin
                 if (data_complete == 1'b1) next_state = STOP;
                 else next_state = (rw == 1'b0) ? W_DATA : R_DATA;
-            end else next_state = START;
-        end 
+            end else begin
+                if (data_complete == 1'b1) next_state = IDLE;
+                else next_state = START;
+            end 
+        end
         SEND_ACK: begin
             if (data_complete == 1'b1) next_state = STOP;
             else next_state = R_DATA;
@@ -116,6 +125,10 @@ always_comb begin
         START: begin
             sda_o = 1'b0;
             scl_o = 1'b1;            
+        end 
+        BUFF: begin
+            sda_o = 1'b0;
+            scl_o = clk_i;            
         end 
         ADDR: begin
             sda_o = (byte_complete == 1'b1) ? rw :  addr[bit_counter];

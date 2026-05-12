@@ -13,4 +13,4 @@ WAVES = 1
 include $(shell cocotb-config --makefiles)/Makefile.sim
 
 view_waves:
-	gtkwave sim_build/i2c_slave.fst
+	gtkwave sim_build/i2c_top.fst

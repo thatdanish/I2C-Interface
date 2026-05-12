@@ -19,5 +19,5 @@ wave_i2c_slave:
 i2c_top:	
 	cd test/i2c_top && make
 
-wave_i2c_slave:
+wave_i2c_top:
 	cd test/i2c_top && make view_waves
