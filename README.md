@@ -18,7 +18,7 @@ I<sup>2</sup>C - Inter Integrated Circuit is is a synchronous, multi-master/mult
 ### Read :
 ![alt text](img/read.png)
 
-    Fig 1: Read operation. Reading value 'd2912749673 from Address 'd103.
+    Fig 2: Read operation. Reading value 'd2912749673 from Address 'd103.
 
 ## Specification
 
