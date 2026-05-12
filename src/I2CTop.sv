@@ -9,13 +9,15 @@ module I2CTop (
     input logic [6:0] addr_i,
     input logic [31:0] master_data_i,
     output logic busy_o,
+    output logic master_data_valid_o,
+    output logic [31:0] master_data_o,
     // From/to slave's side
     input slave_data_valid_i,
     input logic [31:0] slave_data_i,
     output logic rw_o,
-    output logic data_valid_o,
+    output logic slave_data_valid_o,
     output logic [6:0] addr_o,
-    output logic [31:0] data_o
+    output logic [31:0] slave_data_o
 );
 
 logic sda_m2s, sda_s2m, shared_clk;
@@ -30,6 +32,8 @@ i2c_master i2c_master_i (
     .data_valid_i(master_data_valid_i),
     .addr_i,
     .data_i(master_data_i),
+    .data_valid_o(master_data_valid_o),
+    .data_o(master_data_o),
     .busy_o
 );
 
@@ -43,9 +47,9 @@ i2c_slave i2c_slave_i (
     .data_valid_i(slave_data_valid_i),
     .data_i(slave_data_i),
     .rw_o,
-    .data_valid_o,
+    .data_valid_o(slave_data_valid_o),
     .addr_o,
-    .data_o
+    .data_o(slave_data_o)
 );
 
 endmodule

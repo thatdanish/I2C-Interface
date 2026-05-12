@@ -12,6 +12,8 @@ module i2c_master (
     input data_valid_i, 
     input logic [6:0] addr_i,
     input logic [31:0] data_i,
+    output logic [31:0] data_o,
+    output logic data_valid_o,
     output logic busy_o
 );
 
@@ -56,7 +58,7 @@ always_ff @(posedge scl_o) begin
         byte_counter <= (byte_complete == 1'b1) ? ((byte_counter == 'd5 ) ? 'd0 : byte_counter + 'd1) : byte_counter;
     end
     if (current_state == R_DATA) begin
-        recv_data[((byte_counter*8)-1)+bit_counter] <= sda_i;
+        recv_data[((byte_counter-1)*8)+bit_counter] <= sda_i;
     end
 end  
 
@@ -121,42 +123,62 @@ always_comb begin
         IDLE: begin
             sda_o = 1'b1;
             scl_o = 1'b1;
+            data_o = 'd0;
+            data_valid_o = 1'b0;
         end 
         START: begin
             sda_o = 1'b0;
             scl_o = 1'b1;            
+            data_o = 'd0;
+            data_valid_o = 1'b0;
         end 
         BUFF: begin
             sda_o = 1'b0;
             scl_o = clk_i;            
+            data_o = 'd0;
+            data_valid_o = 1'b0;
         end 
         ADDR: begin
             sda_o = (byte_complete == 1'b1) ? rw :  addr[bit_counter];
             scl_o = clk_i;
+            data_o = 'd0;
+            data_valid_o = 1'b0;
         end
         R_DATA: begin
             sda_o = 1'b0;
             scl_o = clk_i;
+            data_o = 'd0;
+            data_valid_o = 1'b0;
         end
         W_DATA: begin
             sda_o = send_data[((byte_counter-1)*8)+bit_counter];
             scl_o = clk_i;            
+            data_o = 'd0;
+            data_valid_o = 1'b0;
         end 
         RECV_ACK: begin
             sda_o = 1'b0;
             scl_o = clk_i;
+            data_o = 'd0;
+            data_valid_o = 1'b0;
         end 
         SEND_ACK: begin
             sda_o =  (data_complete == 1'b1) ? 1'b1 : 1'b0;
             scl_o =  clk_i;
+            data_o = (data_complete == 1'b1) ? recv_data : 'd0;
+            data_valid_o = (data_complete == 1'b1) ? 1'b1 : 1'b0;
         end
         STOP: begin
             sda_o = 1'b1;
             scl_o = 1'b1;;
+            data_o = 'd0;
+            data_valid_o = 1'b0;
         end 
         default: begin
             sda_o = 1'b1;
             scl_o = 1'b1;
+            data_o = 'd0;
+            data_valid_o = 1'b0;
         end
     endcase
 end
